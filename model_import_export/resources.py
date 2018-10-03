@@ -16,7 +16,7 @@ class ModelResource:
 		"""
 
 		self.__list = None
-		if queryset:
+		if queryset != None:
 			self.__process_queryset(queryset)
 		del queryset
 
@@ -28,7 +28,10 @@ class ModelResource:
 		"""
 
 		# print(self.Meta.model._meta.fields)
-		return self.Meta.fields
+		fields = self.Meta.fields
+		if 'id' not in fields:
+			fields.insert(0, 'id')
+		return fields
 
 
 	def __get_database_fields(self):
@@ -36,13 +39,12 @@ class ModelResource:
 		-- IMPORT EXPORT --
 		Returns list of database fields (normal, foreign, related, m2m) for values
 		"""
-
-		fields = self.__get_fields()
-		db_fields = []
+		fields = self.__get_fields() # getting all fields
+		db_fields = list()	# database list to be appended
 		temp_attr = None
 
 		for field in fields:
-			if hasattr(self, field):
+			if hasattr(self, field):	# checking if field has attribute (special field)
 				temp_attr = getattr(self, field)
 				if type(temp_attr) == ForeignKeyResource:
 					db_fields.append([field, 'foreign'])
@@ -53,7 +55,6 @@ class ModelResource:
 			else:
 				db_fields.append([field, 'normal'])
 
-		del temp_attr; del fields;
 		return db_fields
 
 
@@ -62,25 +63,33 @@ class ModelResource:
 		-- EXPORT --
 		Process queryset into dictionary list that is to be saved
 		"""
-
-		db_fields = self.__get_database_fields()
-		self.__fields_values = list(); self.__rename_values = dict(); postprocess_fields = list();
-
-		for db_field in db_fields:
-			if db_field[1] == 'normal':
-				self.__fields_values.append(db_field[0])
-			elif db_field[1] == 'foreign':
-				self.__fields_values.append(db_field[0]+'__'+getattr(self, db_field[0]).column)
-				self.__rename_values[db_field[0]+'__'+getattr(self, db_field[0]).column] = db_field[0]
-			else:
-				self.__fields_values.append(db_field[0])
-				postprocess_fields.append(db_field[0])
-
-		# id fields don't have id
-		if 'id' not in self.__fields_values:
-			self.__fields_values.insert(0, 'id')
+		db_fields = self.__get_database_fields()	# categoried resource fields wrt db
+		
+		self.__fields_values = list()	# fields values to be converted in list before renaming and converted to dataframe 
+		self.__rename_values = dict()	# foreign key to be rename from 'project__column' to 'project'
+		annotate_dict = dict()	# queryset annotate fields for m2m and related fields 
+		queryset_values = list()	# queryset values names
 				
-		self.__list = list(queryset.order_by('id').values(*self.__fields_values).annotate(dcount=Count('id')))
+		for db_field in db_fields:
+
+			if db_field[1] == 'normal':
+				# normal field (just add to queryset_values and fields_values)
+				self.__fields_values.append( db_field[0] )
+				queryset_values.append( db_field[0] )
+			
+			elif db_field[1] == 'foreign':
+				# foreignkey field ( add to queryset_values, fields_values and rename_values)
+				self.__fields_values.append( db_field[0] + '__' + getattr(self, db_field[0]).column )
+				queryset_values.append( db_field[0] )
+				self.__rename_values[db_field[0] + '__' + getattr(self, db_field[0]).column ] = db_field[0]
+			
+			else:
+				# m2m and related fields ( add to fields_values, postprocess_fields and annotate_dict to take just count as its column)
+				self.__fields_values.append(db_field[0])
+				annotate_dict[db_field[0]] = Count(db_field[0])
+
+		# gettings values from queryset		
+		self.__list = list(queryset.order_by('id').values(*queryset_values).annotate(**annotate_dict).values(*self.__fields_values))
 
 		# appending one to many fields to list
 		o2m_field = self.__get_o2m_field(db_fields, queryset)
@@ -113,7 +122,7 @@ class ModelResource:
 		Checks if queryset is available or not before exporting
 		"""
 
-		if not self.__list:
+		if self.__list == None:
 			raise Exception('Cannot export without queryset.')
 
 
@@ -125,7 +134,7 @@ class ModelResource:
 		self.__check_queryset()
 		df = pd.DataFrame(self.__list, columns=self.__fields_values)
 		df=df.rename(columns = self.__rename_values)
-		print(df.head())
+		print(df)
 		return df
 
 

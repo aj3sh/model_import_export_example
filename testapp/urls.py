@@ -4,5 +4,5 @@ from . import views
 app_name = 'testapp'
 
 urlpatterns = [
-	url(r'^export/book$', views.ExportBook.as_view(), name='book'),
+	url(r'^export/subject$', views.ExportSubject.as_view(), name='subject'),
 ]
