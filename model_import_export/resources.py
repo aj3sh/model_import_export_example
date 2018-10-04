@@ -23,7 +23,7 @@ class ModelResource:
 
 	def __get_fields(self):
 		"""
-		-- IMPORT EXPORT --
+		-- used for IMPORT EXPORT --
 		Returns list of fields for resource
 		"""
 
@@ -36,7 +36,7 @@ class ModelResource:
 
 	def __get_database_fields(self):
 		"""
-		-- IMPORT EXPORT --
+		-- used for IMPORT EXPORT --
 		Returns list of database fields (normal, foreign, related, m2m) for values
 		"""
 		fields = self.__get_fields() # getting all fields
@@ -60,7 +60,7 @@ class ModelResource:
 
 	def __process_queryset(self, queryset):
 		"""
-		-- EXPORT --
+		-- used for EXPORT --
 		Process queryset into dictionary list that is to be saved
 		"""
 		db_fields = self.__get_database_fields()	# categoried resource fields wrt db
@@ -102,6 +102,7 @@ class ModelResource:
 
 	def __get_o2m_field(self, db_fields, queryset):
 		"""
+		-- used for Export --
 		returns o2m and related queryset
 		"""
 
@@ -118,7 +119,7 @@ class ModelResource:
 
 	def __check_queryset(self):
 		"""
-		-- EXPORT --
+		-- used for EXPORT --
 		Checks if queryset is available or not before exporting
 		"""
 
@@ -128,13 +129,12 @@ class ModelResource:
 
 	def __get_dataframe(self):
 		"""
-		-- EXPORT --
+		-- used for EXPORT --
 		returns dataframe from the list
 		"""
 		self.__check_queryset()
 		df = pd.DataFrame(self.__list, columns=self.__fields_values)
 		df=df.rename(columns = self.__rename_values)
-		print(df)
 		return df
 
 
@@ -151,13 +151,132 @@ class ModelResource:
 		self.__get_dataframe().to_csv(file_name, index=False)
 
 
+	def __set_dataframe(self, df):
+		"""
+		-- used for EXPORT --
+		returns dataframe from the list
+		"""
+		self.__list = list(df.T.to_dict().values())
+
+
+	def __save_list(self, df):
+		"""
+		saves list of dictionaries to model (if id is empty creates as new object)
+		"""
+		update_df = df.loc[ pd.notnull(df['id']) ]	# row that contain id
+		self.__update_list(update_df)
+		new_df = df.loc[ pd.isnull(df['id']) ]	# row that doesn't contain id (considered as new object)
+		self.__create_list(new_df)
+
+
+	def __update_list(self, df):
+		"""
+		updates update_df list to model
+		"""
+		db_fields = self.__get_database_fields()
+		self_kwargs = dict() # dictionary arguments passed to model object { 'field_name': 'Field_value'}
+		m2m_fields = list() # m2m list carrying [ ['field_name', 'field_value'], ... ]
+
+		row_id = 0
+		for row in list(df.T.to_dict().values()):
+			m2m_fields = list()
+
+			for field in db_fields:
+				if field[1] == 'normal':
+					if field[0] == 'id':
+						row_id = int(row[field[0]])
+						pass
+					else:
+						self_kwargs[field[0]] = row[field[0]]
+						pass
+				elif field[1] == 'foreign':
+					column_name = getattr(self, field[0]).column 	# foreign key column name
+					class_name = self.Meta.model._meta.get_field(field[0]).rel.to 	# forieng key class name
+					self_kwargs[field[0]] = class_name.objects.filter(**{ column_name: row[field[0]] }).first()
+				elif field[1] == 'm2m':
+					m2m_fields.append([field[0], row[field[0]]])
+
+			# updating lists
+			self.Meta.model.objects.filter(id=row_id).update(**self_kwargs)
+			self.__save_m2m(row_id, m2m_fields)
+
+		pass
+
+
+	def __create_list(self, df):
+		"""
+		creates new_df list to model
+		"""
+		db_fields = self.__get_database_fields()
+		self_kwargs = dict() # dictionary arguments passed to model object { 'field_name': 'Field_value'}
+		m2m_fields = list() # m2m list carrying [ ['field_name', 'field_value'], ... ]
+
+		for row in list(df.T.to_dict().values()):
+			for field in db_fields:
+				if field[1] == 'normal':
+					if field[0] != 'id':
+						self_kwargs[field[0]] = row[field[0]]
+						pass
+				elif field[1] == 'foreign':
+					column_name = getattr(self, field[0]).column 	# foreign key column name
+					class_name = self.Meta.model._meta.get_field(field[0]).rel.to 	# forieng key class name
+					self_kwargs[field[0]] = class_name.objects.filter(**{ column_name: row[field[0]] }).first()
+				elif field[1] == 'm2m':
+					m2m_fields.append([field[0], row[field[0]]])
+
+			row_obj = self.Meta.model.objects.create(**self_kwargs)
+			self.__save_m2m(row_obj.id, m2m_fields)
+		pass
+
+
+	def __save_m2m(self, obj_id, fields):
+		"""
+		Save many to many relation of respective fields and values
+		"""
+		obj = self.Meta.model.objects.filter(id=obj_id).first()
+		if not obj:
+			return
+
+		for field in fields:
+			# if many to many field is empty move to next field
+			if pd.isnull(field[1]):
+				continue
+			
+			column_name = getattr(self, field[0]).column 	# m2m column name
+			class_name = self.Meta.model._meta.get_field(field[0]).rel.to 	# m2m class name
+			
+			for value in field[1].split(','):
+				m2m_obj = class_name.objects.filter(**{ column_name: value.strip() }).first()
+				
+				# adding m2m object if exists
+				if m2m_obj:
+					getattr(obj, field[0]).add(m2m_obj)
+
+
+	def from_csv(self, file_name):
+		"""
+		loads data from csv and saves to model
+		"""
+		print("From csv.")
+		df = pd.read_csv(file_name, dtype=object)
+		self.__save_list(df)
+		pass
+
+	def from_excel(self, file_name):
+		"""
+		loads data from excel and saves to model
+		"""
+		print("From excel.")
+		df = pd.read_excel(file_name, dtype=object)
+		self.__save_list(df)
+		pass
+
 
 class ForeignKeyResource:
 	"""
 	Foreign key resource
 	Used for foriegnkey field in model resource
 	"""
-
 	def __init__(self, **kwargs):
 		if kwargs.get('column'):
 			self.column = kwargs.get('column')
@@ -169,7 +288,6 @@ class RelatedResource:
 	Related resource for realted names
 	One to many relations
 	"""
-
 	def __init__(self, **kwargs):
 		if kwargs.get('column'):
 			self.column = kwargs.get('column')
@@ -181,7 +299,6 @@ class ManyToManyResource:
 	Many to Many resource
 	Used for many to many field in model resource
 	"""
-
 	def __init__(self, **kwargs):
 		if kwargs.get('column'):
 			self.column = kwargs.get('column')
