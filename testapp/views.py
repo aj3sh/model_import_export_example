@@ -1,11 +1,16 @@
 import os
 
 from django.shortcuts import render, HttpResponse
-from django.views.generic import View
+from django.views.generic import View, ListView
 
 from .resources import SubjectResource
 from .models import Subject
 
+
+class SubjectView(ListView):
+	model = Subject
+	template_name = "testapp/subjects.html"
+	context_object_name = 'subjects'
 
 class ExportSubject(View):
 
