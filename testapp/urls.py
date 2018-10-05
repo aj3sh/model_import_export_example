@@ -5,6 +5,7 @@ app_name = 'testapp'
 
 urlpatterns = [
 	url(r'^$', views.SubjectView.as_view(), name='subject'),
-	url(r'^export/subject$', views.ExportSubject.as_view(), name='export-subject'),
+	url(r'^export/subject.xlsx$', views.ExportSubject.as_view(), name='export-subject'),
 	url(r'^import/subject$', views.ImportSubject.as_view(), name='import-subject'),
+	url(r'^import/subject/test$', views.ImportSubjectTest.as_view(), name='import-subject-test'),
 ]

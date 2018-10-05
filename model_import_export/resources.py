@@ -257,7 +257,6 @@ class ModelResource:
 		"""
 		loads data from csv and saves to model
 		"""
-		print("From csv.")
 		df = pd.read_csv(file_name, dtype=object)
 		self.__save_list(df)
 		pass
@@ -266,7 +265,6 @@ class ModelResource:
 		"""
 		loads data from excel and saves to model
 		"""
-		print("From excel.")
 		df = pd.read_excel(file_name, dtype=object)
 		self.__save_list(df)
 		pass
