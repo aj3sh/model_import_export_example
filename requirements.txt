@@ -1,4 +1,4 @@
-Django==1.11
+Django==1.11.15
 et-xmlfile==1.0.1
 jdcal==1.4
 numpy==1.15.2
