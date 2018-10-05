@@ -53,6 +53,10 @@ class ImportSubject(TemplateView):
 	def save_file(self, request, *args, **kwargs):
 		fs = FileSystemStorage()
 
+		# creating documents directory
+		if not os.path.exists('documents'):
+			os.makedirs('documents')
+
 		# saving profile picture
 		if request.FILES.get('import_file'):
 			import_file = request.FILES.get('import_file')
