@@ -20,5 +20,5 @@ models: testapp.models
 
 
 ## Model Import/Export
-[![GitHub model_import_export](https://github.com/aj3sh/model_import_export)
+![GitHub model_import_export](https://github.com/aj3sh/model_import_export)
 
