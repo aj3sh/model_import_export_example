@@ -20,27 +20,35 @@
 				<tr>
 					<th>id</th>
 					<th>class_obj</th>
+					<th>Author</th>
 					<th>Code</th>
 					<th>Name</th>
 					<th>Tags</th>
+					<th>Date</th>
+					<th>Time</th>
+					<th>Datetime</th>
 				</tr>
 			</thead>
 			<tbody>
-			   	{% for subject in subjects %}
+				{% for subject in subjects %}
 
-			   	<tr>
-			   		<td>{{ subject.id }}</td>
-			   		<td>{{ subject.class_obj }}</td>
-			   		<td>{{ subject.code }}</td>
-			   		<td>{{ subject.name }}</td>
-			   		<td>
-			   			{% for tag in subject.tags.all %}
-			   				{{ tag }}
-			   			{% endfor %}
-			   		</td>
-			   	</tr>
+				<tr>
+					<td>{{ subject.id }}</td>
+					<td>{{ subject.class_obj }}</td>
+					<td>{{ subject.author }}</td>
+					<td>{{ subject.code }}</td>
+					<td>{{ subject.name }}</td>
+					<td>
+						{% for tag in subject.tags.all %}
+							{{ tag }}
+						{% endfor %}
+					</td>
+					<td>{{ subject.date }}</td>
+					<td>{{ subject.time }}</td>
+					<td>{{ subject.datetime }}</td>
+				</tr>
 
-			   	{% endfor %}
+				{% endfor %}
 			</tbody>
 		</table>
 	</div>
