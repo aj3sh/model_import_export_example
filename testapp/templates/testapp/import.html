@@ -14,7 +14,7 @@
 		<form method="POST" enctype="multipart/form-data">
 			{% csrf_token %}
 			<div class="form-group">
-				<input type="file" name="import_file" required="" accept=".xlsx">
+				<input type="file" name="file" required="" accept=".xlsx">
 			</div>
 			<button type="submit" class="btn btn-primary">Import</button>
 		</form>
